@@ -83,3 +83,45 @@
     @apply font-bold text-4xl md:text-5xl text-center;
   }
 }
+
+@layer components {
+  .blog-container {
+    @apply mx-auto px-4 sm:px-6 py-12;
+  }
+  
+  .blog-heading {
+    @apply font-monte !leading-loose font-bold text-3xl md:text-4xl lg:text-5xl mb-6 bg-gradient-to-r from-indigo-600 via-purple to-pink-500 bg-clip-text text-transparent;
+  }
+  
+  .blog-subtitle {
+    @apply font-monte text-xl md:text-2xl font-medium text-gray-700 mb-8;
+  }
+  
+  .section-heading {
+    @apply font-monte text-2xl font-bold mt-8 mb-4 flex items-center text-gray-800;
+  }
+  
+  .section-content {
+    @apply font-monte text-gray-700 leading-relaxed mb-6;
+  }
+  
+  .blog-card {
+    @apply font-monte bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100;
+  }
+  
+  .emoji-highlight {
+    @apply mr-2 text-2xl;
+  }
+  
+  .blog-image-container {
+    @apply relative overflow-hidden rounded-xl my-8;
+  }
+  
+  .blog-image {
+    @apply w-full h-auto object-cover transition-transform duration-500 hover:scale-105;
+  }
+  
+  .quote-section {
+    @apply font-monte italic border-l-4 border-indigo-500 pl-4 py-2 text-gray-600 my-6;
+  }
+}

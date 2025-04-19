@@ -26,6 +26,9 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        monte: ["var(--font-montserrat)", "sans-serif"],
+      },
       colors: {
         black: {
           DEFAULT: "#000",
