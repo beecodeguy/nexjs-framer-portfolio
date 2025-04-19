@@ -90,7 +90,7 @@
   }
   
   .blog-heading {
-    @apply font-monte !leading-loose font-bold text-3xl md:text-4xl lg:text-5xl mb-6 bg-gradient-to-r from-indigo-600 via-purple to-pink-500 bg-clip-text text-transparent;
+    @apply font-monte !leading-loose font-bold text-3xl md:text-4xl lg:text-5xl mb-6 bg-gradient-to-r from-indigo-600 via-orange-500 to-emerald-500 bg-clip-text text-transparent;
   }
   
   .blog-subtitle {

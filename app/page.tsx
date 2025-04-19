@@ -8,12 +8,26 @@ import { FloatingNav } from "@/components/ui/floating-navbar";
 import WorkApproach from "@/components/work-approach";
 import { navItems } from "@/data";
 import Image from "next/image";
+import { Cover } from "./my-story/_components/cover";
+import Link from "next/link";
 
 export default function Home() {
   return (
     <main className="relative bg-black-100 flex justify-center items-center flex-col mx-auto sm:px-10 px-5 overflow-clip">
       <div className="max-w-7xl w-full">
         <Hero />
+        <div>
+          <h1 className="text-4xl md:text-4xl lg:text-6xl font-semibold max-w-7xl mx-auto text-center mt-6 relative z-20 py-6 bg-clip-text text-transparent bg-gradient-to-b from-neutral-800 via-neutral-700 to-neutral-700 dark:from-neutral-800 dark:via-white dark:to-white">
+            Want to Hear <br />{" "}
+            <Cover>
+              <Link href={"/my-story"}>
+                <span className="text-4xl md:text-4xl lg:text-6xl font-semibold text-transparent bg-clip-text bg-gradient-to-b from-neutral-800 via-neutral-700 to-neutral-700 dark:from-neutral-800 dark:via-white dark:to-white">
+                  My Story?
+                </span>
+              </Link>
+            </Cover>
+          </h1>
+        </div>
         <Grid />
         <Experiences />
         <RecentProjects />
