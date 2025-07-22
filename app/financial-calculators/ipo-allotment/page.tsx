@@ -1,0 +1,749 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Calculator,
+  TrendingUp,
+  Users,
+  PieChart,
+  BarChart3,
+  Share2,
+  Download,
+  ArrowLeft,
+  Info,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
+import Link from "next/link";
+
+interface IPOResult {
+  probability: number;
+  maxAllottees: number;
+  expectedAllotments: number;
+  message: string;
+  category: "high" | "medium" | "low";
+  oneInX: number;
+}
+
+interface GroupResult {
+  expectedAllotments: number;
+  probability: number;
+  breakdown: Array<{
+    members: number;
+    expectedAllotted: number;
+    probability: number;
+  }>;
+}
+
+const COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b"];
+
+export default function IPOAllotmentCalculator() {
+  const [totalShares, setTotalShares] = useState<string>("1200000");
+  const [totalApplicants, setTotalApplicants] = useState<string>("1800000");
+  const [appliedUnits, setAppliedUnits] = useState<string>("10");
+  const [groupSize, setGroupSize] = useState<string>("1");
+  const [result, setResult] = useState<IPOResult | null>(null);
+  const [groupResult, setGroupResult] = useState<GroupResult | null>(null);
+  const [activeTab, setActiveTab] = useState("individual");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const DEFAULT_APPLICANTS = "1800000";
+
+  const resetToDefaultApplicants = () => {
+    setTotalApplicants(DEFAULT_APPLICANTS);
+  };
+
+  const downloadResults = () => {
+    if (!result) return;
+
+    // Create a comprehensive report
+    const reportData = {
+      timestamp: new Date().toLocaleString(),
+      ipoDetails: {
+        totalShares: parseInt(totalShares).toLocaleString(),
+        totalApplicants: parseInt(totalApplicants).toLocaleString(),
+        appliedUnits: appliedUnits,
+        allotmentLotSize: "10 units",
+      },
+      results: {
+        probability: `${result.probability}%`,
+        maxAllottees: result.maxAllottees.toLocaleString(),
+        oneInX: result.oneInX,
+        category: result.category,
+        message: result.message,
+      },
+      groupResults:
+        activeTab === "group" && groupResult
+          ? {
+              groupSize: groupSize,
+              expectedAllotments: groupResult.expectedAllotments,
+              breakdown: groupResult.breakdown,
+            }
+          : null,
+    };
+
+    // Create downloadable content
+    const content = `
+IPO ALLOTMENT PROBABILITY REPORT
+Generated on: ${reportData.timestamp}
+
+═══════════════════════════════════════
+IPO DETAILS
+═══════════════════════════════════════
+Total Public Shares: ${reportData.ipoDetails.totalShares} kitta
+Total Applicants: ${reportData.ipoDetails.totalApplicants}
+Applied Units: ${reportData.ipoDetails.appliedUnits} kitta
+Allotment Lot Size: ${reportData.ipoDetails.allotmentLotSize}
+
+═══════════════════════════════════════
+PROBABILITY ANALYSIS
+═══════════════════════════════════════
+Allotment Probability: ${reportData.results.probability}
+Maximum Possible Allottees: ${reportData.results.maxAllottees}
+Success Rate: 1 in every ${reportData.results.oneInX} people
+Risk Category: ${reportData.results.category.toUpperCase()}
+
+Analysis: ${reportData.results.message}
+
+${
+  reportData.groupResults
+    ? `
+═══════════════════════════════════════
+GROUP ANALYSIS (${reportData.groupResults.groupSize} Members)
+═══════════════════════════════════════
+Expected Allotments: ${reportData.groupResults.expectedAllotments}
+
+Breakdown by Group Size:
+${reportData.groupResults.breakdown
+  .map(
+    (item) =>
+      `${item.members} member${item.members > 1 ? "s" : ""}: ~${
+        item.expectedAllotted
+      } allotment${item.expectedAllotted !== 1 ? "s" : ""}`
+  )
+  .join("\n")}
+`
+    : ""
+}
+
+═══════════════════════════════════════
+DISCLAIMER
+═══════════════════════════════════════
+This calculation is an estimate based on the provided data.
+Actual IPO allotment may vary due to various factors including
+regulatory changes, company decisions, and market conditions.
+
+Generated by FinanceCalc Pro
+Visit: https://financecalc.pro
+    `.trim();
+
+    // Create and download the file
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `IPO_Allotment_Report_${
+      new Date().toISOString().split("T")[0]
+    }.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const shareResults = () => {
+    if (!result) return;
+
+    const shareText = `🎯 IPO Allotment Probability: ${result.probability}%
+
+📊 Analysis:
+• Max Allottees: ${result.maxAllottees.toLocaleString()}
+• Success Rate: 1 in ${result.oneInX} people
+• Risk Level: ${result.category.toUpperCase()}
+
+${result.message}
+
+${
+  activeTab === "group" && groupResult
+    ? `👥 Group Analysis (${groupSize} members): ${groupResult.expectedAllotments} expected allotments`
+    : ""
+}
+
+Calculate your IPO probability at FinanceCalc Pro`;
+
+    if (navigator.share) {
+      navigator
+        .share({
+          title: "IPO Allotment Probability Report",
+          text: shareText,
+          url: window.location.href,
+        })
+        .catch(console.error);
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard
+        .writeText(shareText)
+        .then(() => {
+          alert("Results copied to clipboard!");
+        })
+        .catch(() => {
+          alert("Unable to copy. Please try again.");
+        });
+    }
+  };
+
+  const validateInputs = () => {
+    const newErrors: Record<string, string> = {};
+
+    const shares = parseInt(totalShares);
+    const applicants = parseInt(totalApplicants);
+    const units = parseInt(appliedUnits);
+    const group = parseInt(groupSize);
+
+    if (!shares || shares <= 0) {
+      newErrors.totalShares = "Total shares must be greater than 0";
+    }
+
+    if (!applicants || applicants <= 0) {
+      newErrors.totalApplicants = "Number of applicants must be greater than 0";
+    }
+
+    if (!units || units < 10 || units % 10 !== 0) {
+      newErrors.appliedUnits =
+        "Applied units must be at least 10 and in multiples of 10";
+    }
+
+    if (activeTab === "group" && (!group || group <= 0 || group > 20)) {
+      newErrors.groupSize = "Group size must be between 1 and 20";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const calculateProbability = () => {
+    if (!validateInputs()) return;
+
+    const shares = parseInt(totalShares);
+    const applicants = parseInt(totalApplicants);
+    const units = parseInt(appliedUnits);
+    const group = parseInt(groupSize);
+
+    // Standard allotment is 10 units minimum
+    const allotmentLotSize = 10;
+    const maxAllottees = Math.floor(shares / allotmentLotSize);
+
+    let probability: number;
+    let message: string;
+    let category: "high" | "medium" | "low";
+
+    if (applicants <= maxAllottees) {
+      probability = 100;
+      message = "Excellent! All applicants are likely to be allotted.";
+      category = "high";
+    } else {
+      probability = (maxAllottees / applicants) * 100;
+
+      if (probability >= 50) {
+        message = "Good chance! More than half of applicants may be allotted.";
+        category = "high";
+      } else if (probability >= 10) {
+        message = "Moderate chance. Consider the risk vs reward.";
+        category = "medium";
+      } else {
+        message = "Highly oversubscribed. Consider alternative investments.";
+        category = "low";
+      }
+    }
+
+    const oneInX = Math.round(100 / probability);
+    const expectedAllotments = Math.round((probability * group) / 100);
+
+    const individualResult: IPOResult = {
+      probability: Math.round(probability * 100) / 100,
+      maxAllottees,
+      expectedAllotments,
+      message,
+      category,
+      oneInX,
+    };
+
+    setResult(individualResult);
+
+    // Calculate group results
+    if (activeTab === "group") {
+      const breakdown = [];
+      for (let i = 1; i <= group; i++) {
+        const expectedForGroup = Math.round((probability * i) / 100);
+        breakdown.push({
+          members: i,
+          expectedAllotted: expectedForGroup,
+          probability: Math.min(100, probability * i),
+        });
+      }
+
+      setGroupResult({
+        expectedAllotments,
+        probability: Math.round(probability * 100) / 100,
+        breakdown,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (totalShares && totalApplicants && appliedUnits) {
+      calculateProbability();
+    }
+  }, [totalShares, totalApplicants, appliedUnits, groupSize, activeTab]);
+
+  const chartData = result
+    ? [
+        {
+          name: "Likely Allotted",
+          value: result.maxAllottees,
+          color: "#10b981",
+        },
+        {
+          name: "Not Allotted",
+          value: parseInt(totalApplicants) - result.maxAllottees,
+          color: "#ef4444",
+        },
+      ]
+    : [];
+
+  const probabilityData = [
+    {
+      name: "High (>50%)",
+      probability:
+        result &&
+        typeof result.probability === "number" &&
+        result.probability > 50
+          ? result.probability
+          : 0,
+    },
+    {
+      name: "Medium (10-50%)",
+      probability:
+        typeof result?.probability === "number" &&
+        result.probability >= 10 &&
+        result.probability <= 50
+          ? result.probability
+          : 0,
+    },
+    {
+      name: "Low (<10%)",
+      probability:
+        typeof result?.probability === "number" && result.probability < 10
+          ? result.probability
+          : 0,
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 pb-20 md:pb-8">
+      {/* Header */}
+      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Link href="/">
+                <Button variant="ghost" size="sm" className="md:hidden">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
+              <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-teal-600 rounded-lg flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg md:text-xl font-bold text-gray-900">
+                  IPO Allotment Calculator
+                </h1>
+                <p className="text-xs text-gray-500 hidden md:block">
+                  Estimate your IPO allocation probability
+                </p>
+              </div>
+            </div>
+            <Link href="/" className="hidden md:block">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Input Section */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5" />
+                  IPO Details
+                </CardTitle>
+                <CardDescription>
+                  Enter the IPO information to calculate allotment probability
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="totalShares">
+                    Total Public Shares (Kitta)
+                  </Label>
+                  <Input
+                    id="totalShares"
+                    type="number"
+                    value={totalShares}
+                    onChange={(e) => setTotalShares(e.target.value)}
+                    placeholder="e.g., 1,200,000"
+                    className={errors.totalShares ? "border-red-500" : ""}
+                  />
+                  {errors.totalShares && (
+                    <p className="text-sm text-red-500">{errors.totalShares}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="totalApplicants">
+                      Total Number of Applicants
+                    </Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={resetToDefaultApplicants}
+                      className="text-xs h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      Reset to Default
+                    </Button>
+                  </div>
+                  <Input
+                    id="totalApplicants"
+                    type="number"
+                    value={totalApplicants}
+                    onChange={(e) => setTotalApplicants(e.target.value)}
+                    placeholder="e.g., 18,00,000"
+                    className={errors.totalApplicants ? "border-red-500" : ""}
+                  />
+                  {errors.totalApplicants && (
+                    <p className="text-sm text-red-500">
+                      {errors.totalApplicants}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    <strong>Default: 18,00,000</strong> - This value was taken
+                    from applicant history by averaging past 5 IPOs applicants
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="appliedUnits">Applied Units (Kitta)</Label>
+                  <Input
+                    id="appliedUnits"
+                    type="number"
+                    value={appliedUnits}
+                    onChange={(e) => setAppliedUnits(e.target.value)}
+                    placeholder="e.g., 10"
+                    className={errors.appliedUnits ? "border-red-500" : ""}
+                  />
+                  {errors.appliedUnits && (
+                    <p className="text-sm text-red-500">
+                      {errors.appliedUnits}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Note: Higher units don&apos;t increase your chances.
+                    Standard allotment is 10 units.
+                  </p>
+                </div>
+
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Allotment Lot Size:</strong> 10 units (standard in
+                    Nepal)
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* Calculation Mode Tabs */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Calculation Mode</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="individual">Individual</TabsTrigger>
+                    <TabsTrigger value="group">Group/Family</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="individual" className="mt-4">
+                    <p className="text-sm text-gray-600">
+                      Calculate probability for a single applicant
+                    </p>
+                  </TabsContent>
+
+                  <TabsContent value="group" className="mt-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="groupSize">
+                        Number of Family Members/DPs
+                      </Label>
+                      <Input
+                        id="groupSize"
+                        type="number"
+                        value={groupSize}
+                        onChange={(e) => setGroupSize(e.target.value)}
+                        placeholder="e.g., 5"
+                        min="1"
+                        max="20"
+                        className={errors.groupSize ? "border-red-500" : ""}
+                      />
+                      {errors.groupSize && (
+                        <p className="text-sm text-red-500">
+                          {errors.groupSize}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Calculate expected allotments for multiple family
+                        members
+                      </p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Results Section */}
+          <div className="space-y-6">
+            {result && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Allotment Probability</span>
+                      <Badge
+                        variant={
+                          result.category === "high"
+                            ? "default"
+                            : result.category === "medium"
+                            ? "secondary"
+                            : "destructive"
+                        }
+                      >
+                        {result.probability}%
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-blue-600 mb-2">
+                        {result.probability}%
+                      </div>
+                      <p className="text-gray-600 mb-4">{result.message}</p>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <div className="font-semibold text-blue-700">
+                            Max Allottees
+                          </div>
+                          <div className="text-lg font-bold text-blue-600">
+                            {result.maxAllottees.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="bg-teal-50 p-3 rounded-lg">
+                          <div className="font-semibold text-teal-700">
+                            1 in Every
+                          </div>
+                          <div className="text-lg font-bold text-teal-600">
+                            {result.oneInX} people
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {activeTab === "group" && groupResult && (
+                      <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-teal-50 rounded-lg">
+                        <h4 className="font-semibold text-gray-800 mb-2">
+                          Group Analysis
+                        </h4>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Expected allotments for {groupSize} family members:{" "}
+                          <strong>{groupResult.expectedAllotments}</strong>
+                        </p>
+
+                        <div className="space-y-2">
+                          {groupResult.breakdown
+                            .slice(-3)
+                            .map((item, index) => (
+                              <div
+                                key={index}
+                                className="flex justify-between items-center text-sm"
+                              >
+                                <span>
+                                  {item.members} member
+                                  {item.members > 1 ? "s" : ""}
+                                </span>
+                                <span className="font-medium">
+                                  ~{item.expectedAllotted} allotment
+                                  {item.expectedAllotted !== 1 ? "s" : ""}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Charts */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PieChart className="h-5 w-5" />
+                      Visual Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs defaultValue="distribution">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="distribution">
+                          Distribution
+                        </TabsTrigger>
+                        <TabsTrigger value="probability">
+                          Probability
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="distribution" className="mt-4">
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RechartsPieChart>
+                              <Pie
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={100}
+                                paddingAngle={5}
+                                dataKey="value"
+                              >
+                                {chartData.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.color}
+                                  />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(value: any) => [
+                                  value.toLocaleString(),
+                                  "",
+                                ]}
+                              />
+                              <Legend />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="probability" className="mt-4">
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={probabilityData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <Tooltip
+                                formatter={(value: any) => [
+                                  `${value}%`,
+                                  "Probability",
+                                ]}
+                              />
+                              <Bar dataKey="probability" fill="#3b82f6" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={shareResults}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share Result
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={downloadResults}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t md:hidden">
+        <div className="grid grid-cols-4 py-2">
+          <Link href="/" className="flex flex-col items-center py-2 px-1">
+            <Calculator className="h-5 w-5 text-gray-400" />
+            <span className="text-xs text-gray-400 mt-1">Home</span>
+          </Link>
+          <button className="flex flex-col items-center py-2 px-1">
+            <TrendingUp className="h-5 w-5 text-blue-600" />
+            <span className="text-xs text-blue-600 mt-1">IPO</span>
+          </button>
+          <button className="flex flex-col items-center py-2 px-1">
+            <PieChart className="h-5 w-5 text-gray-400" />
+            <span className="text-xs text-gray-400 mt-1">Charts</span>
+          </button>
+          <button className="flex flex-col items-center py-2 px-1">
+            <Users className="h-5 w-5 text-gray-400" />
+            <span className="text-xs text-gray-400 mt-1">More</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

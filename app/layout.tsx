@@ -6,7 +6,7 @@ import { FloatingNav } from "@/components/ui/floating-navbar";
 import { navItems } from "@/data";
 import Footer from "@/components/footer";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const monte = Montserrat({
   subsets: ["latin"],
   variable: "--font-montserrat",
